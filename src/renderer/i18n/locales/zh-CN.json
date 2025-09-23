@@ -319,7 +319,16 @@
     "createFolder": "新建文件夹",
     "manageFolder": "管理文件夹",
     "createPrompt": "新建提示词",
-    "folderTooltip": "点击查看此文件夹中的提示词"
+    "folderTooltip": "点击查看此文件夹中的提示词",
+    "folderNameCannotBeEmpty": "文件夹名称不能为空",
+    "folderNameExists": "已存在相同名称的文件夹，请使用其他名称",
+    "folderRenameSuccess": "文件夹重命名成功",
+    "folderRenameFailed": "文件夹重命名失败",
+    "confirmDeleteFolder": "确定要删除此文件夹吗？文件夹中的提示词不会被删除。",
+    "folderDeleteSuccess": "文件夹删除成功",
+    "folderDeleteFailed": "文件夹删除失败",
+    "cannotEditSpecialFolder": "无法编辑特殊文件夹",
+    "cannotDeleteSpecialFolder": "无法删除特殊文件夹"
   },
   "networkProxy": {
     "connectionFailed": "连接失败",

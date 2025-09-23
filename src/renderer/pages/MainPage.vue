@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, h, nextTick, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useMessage } from 'naive-ui'
 // 引入侧边栏样式
 import '~/styles/sidebar.css'
 // 导入api和数据库hooks
@@ -34,6 +35,7 @@ import StatusBar from '~/components/common/StatusBar.vue'
 import SidebarContent from '~/components/common/SidebarContent.vue'
 
 const { t } = useI18n()
+const message = useMessage()
 // 定义视图类型
 type ViewType = 'folders' | 'favorites' | 'tags' | 'ai-config' | 'settings';
 const currentView = ref<ViewType>('folders')
@@ -168,7 +170,7 @@ const loadSidebarData = async () => {
             if (uncategorizedCount > 0) {
                 // 添加"未分类"选项
                 categories.value.push({
-                    id: '0',
+                    id: 'uncategorized', // 使用字符串标识符，避免使用数字ID
                     name: '未分类',
                     color: '#808080',
                     promptCount: uncategorizedCount
@@ -262,25 +264,68 @@ const handleCreatePrompt = () => {
     })
 }
 
-// 处理分类管理
-const handleManageCategories = () => {
+// 处理新建文件夹
+const handleCreateFolder = async () => {
     // 确保当前是文件夹视图
     if (!['folders', 'favorites', 'tags'].includes(currentView.value)) {
         currentView.value = 'folders'
     }
 
-    // 通过nextTick确保视图已更新
-    nextTick(() => {
-        // 获取PromptManagementPage组件引用
-        const element = document.querySelector('.prompt-management-page');
-        // @ts-ignore - 使用内部Vue属性访问组件实例
-        const promptManagementPageRef = element?.__vueParentComponent?.proxy;
-        if (promptManagementPageRef) {
-            promptManagementPageRef.showCategoryManagement = true
-        } else {
-            console.error('无法找到PromptManagementPage组件')
+    try {
+        // 检查是否已存在同名文件夹
+        const existingFolderNames = categories.value.map(folder => folder.name.toLowerCase());
+
+        // 生成唯一的文件夹名称
+        let newFolderName = '新文件夹';
+        let counter = 1;
+
+        while (existingFolderNames.includes(newFolderName.toLowerCase())) {
+            newFolderName = `新文件夹 (${counter})`;
+            counter++;
         }
-    })
+
+        // 创建一个新分类，使用唯一的名称
+        const newCategory = {
+            name: newFolderName,
+            description: '',
+            isActive: true
+        }
+
+        // 调用API创建新分类
+        const createdCategory = await safeDbOperation(
+            () => api.categories.create.mutate(newCategory),
+            null
+        )
+
+        if (createdCategory) {
+            console.log('成功创建新文件夹:', createdCategory)
+
+            // 刷新侧边栏数据
+            await loadSidebarData()
+
+            // 自动选择新创建的文件夹
+            handleSelectFolder(createdCategory.id?.toString() || null)
+
+            // 让新文件夹进入编辑状态
+            nextTick(() => {
+                // 获取NFolderList组件引用
+                const sidebarContent = document.querySelector('.sidebar-content');
+                // @ts-ignore - 使用Vue内部属性
+                const sidebarContentRef = sidebarContent?.__vueParentComponent?.proxy;
+
+                if (sidebarContentRef && sidebarContentRef.$refs.folderListRef) {
+                    // 调用FolderList组件的编辑模式方法
+                    sidebarContentRef.$refs.folderListRef.setFolderEditMode(createdCategory.id.toString());
+                } else {
+                    console.error('无法找到NFolderList组件引用');
+                }
+            })
+        }
+    } catch (error) {
+        console.error('创建新文件夹失败:', error)
+        // 显示错误消息
+        message.error('创建文件夹失败: 可能存在同名文件夹');
+    }
 }
 
 // 这里不应该放导入语句，移到文件顶部
@@ -340,7 +385,8 @@ window.electronAPI.sendMessage('Hello from App.vue!')
                             @toggle-favorites="handleToggleFavorites"
                             @select-tag="handleSelectTag"
                             @create-prompt="handleCreatePrompt"
-                            @manage-categories="handleManageCategories"
+                            @create-folder="handleCreateFolder"
+                            @update="loadSidebarData"
                         />
                     </div>
                     <!-- 仅在收起状态显示菜单 -->

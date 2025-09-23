@@ -16,6 +16,14 @@
                     </NText>
                 </div>
                 <NFlex>
+                    <NButton type="primary" @click="handleCreatePrompt">
+                        <template #icon>
+                            <NIcon>
+                                <Plus />
+                            </NIcon>
+                        </template>
+                        {{ t('sidebar.createPrompt') }}
+                    </NButton>
                     <NButton @click="showAIGenerator = !showAIGenerator"
                         :type="showAIGenerator ? 'primary' : 'default'">
                         <template #icon>

@@ -7,32 +7,25 @@
         <div>
           <NTooltip>
             <template #trigger>
-              <NButton quaternary circle size="small" @click="handleManageCategories">
+              <NButton quaternary circle size="small" @click="handleNewFolder">
                 <template #icon>
                   <NIcon><FolderPlusIcon /></NIcon>
                 </template>
               </NButton>
             </template>
-            {{ t('sidebar.manageFolder') }}
-          </NTooltip>
-          <NTooltip>
-            <template #trigger>
-              <NButton quaternary circle size="small" @click="handleCreatePrompt">
-                <template #icon>
-                  <NIcon><PlusIcon /></NIcon>
-                </template>
-              </NButton>
-            </template>
-            {{ t('sidebar.createPrompt') }}
+            {{ t('sidebar.createFolder') }}
           </NTooltip>
         </div>
       </div>
       <NScrollbar style="max-height: calc(100% - 40px);" trigger="hover">
         <div class="section-content">
           <NFolderList
+            ref="folderListRef"
             :folders="folders"
             :selected-folder="selectedFolder"
             @select="handleSelectFolder"
+            @update="$emit('update')"
+            @reorder="$emit('update')"
           />
         </div>
       </NScrollbar>
@@ -107,7 +100,9 @@ const emit = defineEmits<{
   'toggle-favorites': [showOnly: boolean],
   'select-tag': [tag: string],
   'create-prompt': [],
-  'manage-categories': []
+  'create-folder': [],
+  'manage-categories': [],
+  'update': []
 }>()
 
 // 国际化
@@ -123,6 +118,9 @@ const totalHeight = ref(0)
 const folderSectionHeight = ref(0)
 const favoriteSectionHeight = ref(0)
 const tagSectionHeight = ref(0)
+
+// 组件引用
+const folderListRef = ref()
 
 // 拖动调整的状态
 const isResizingFolderFavorites = ref(false)
@@ -175,9 +173,9 @@ const handleCreatePrompt = () => {
   emit('create-prompt')
 }
 
-// 处理分类管理
-const handleManageCategories = () => {
-  emit('manage-categories')
+// 处理新建文件夹
+const handleNewFolder = () => {
+  emit('create-folder')
 }
 
 // 开始拖动调整文件夹和收藏部分的大小
