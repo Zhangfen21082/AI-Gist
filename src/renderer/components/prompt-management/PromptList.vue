@@ -30,14 +30,6 @@
                         </template>
                         {{ t('promptManagement.favorites') }}
                     </NButton>
-                    <NButton @click="$emit('manage-categories')">
-                        <template #icon>
-                            <NIcon>
-                                <Folder />
-                            </NIcon>
-                        </template>
-                        {{ t('promptManagement.categories') }}
-                    </NButton>
                     <NButtonGroup>
                         <NButton :type="viewMode === 'grid' ? 'primary' : 'default'" @click="setViewMode('grid')">
                             <template #icon>
@@ -1372,8 +1364,13 @@ const toggleTagsExpanded = () => {
     tagsExpanded.value = !tagsExpanded.value
 }
 
-const toggleFavoritesFilter = () => {
-    showFavoritesOnly.value = !showFavoritesOnly.value
+const toggleFavoritesFilter = (forceState?: boolean) => {
+    if (forceState !== undefined) {
+        showFavoritesOnly.value = forceState;
+    } else {
+        showFavoritesOnly.value = !showFavoritesOnly.value;
+    }
+
     // 重置页码
     currentPage.value = 1
     if (viewMode.value === 'table') {
@@ -1385,8 +1382,13 @@ const toggleFavoritesFilter = () => {
     }
 }
 
-const toggleAdvancedFilter = () => {
-    showAdvancedFilter.value = !showAdvancedFilter.value
+const toggleAdvancedFilter = (forceState?: boolean) => {
+    if (forceState !== undefined) {
+        showAdvancedFilter.value = forceState;
+    } else {
+        showAdvancedFilter.value = !showAdvancedFilter.value;
+    }
+
     // 当开启高级筛选时，默认展开分类和标签区域
     if (showAdvancedFilter.value) {
         categoriesExpanded.value = true
@@ -1695,6 +1697,29 @@ onBeforeUnmount(() => {
     imageUrlCache.clear();
 });
 
+// 根据分类筛选
+const filterByCategory = (categoryId: number | string | null) => {
+    console.log('执行filterByCategory:', categoryId);
+    if (typeof categoryId === 'string' && categoryId.trim() !== '') {
+        try {
+            categoryId = parseInt(categoryId, 10)
+        } catch (e) {
+            console.error('无法将分类ID转换为数字:', categoryId, e);
+            // 继续使用字符串ID
+        }
+    }
+    selectedCategory.value = categoryId as number | null
+    // 重置页码
+    currentPage.value = 1
+    if (viewMode.value === 'table') {
+        loadPromptsForTable()
+    } else if (viewMode.value === 'tree') {
+        loadTreeData()
+    } else {
+        loadPrompts(true) // 重置加载
+    }
+}
+
 // 暴露方法给父组件
 defineExpose({
     loadPrompts: () => {
@@ -1708,7 +1733,13 @@ defineExpose({
         }
     },
     loadCategories,
-    loadStatistics
+    loadStatistics,
+    toggleFavoritesFilter,  // 暴露收藏筛选方法
+    toggleAdvancedFilter,   // 暴露高级筛选方法
+    setViewMode,            // 暴露视图模式设置方法
+    clearAllFilters,        // 暴露清除所有筛选方法
+    filterByCategory,       // 暴露按分类筛选方法
+    handleTagQuickSearch    // 暴露标签筛选方法
 })
 </script>
 

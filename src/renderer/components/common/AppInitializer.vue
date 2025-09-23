@@ -19,7 +19,10 @@
             </NText>
             <NFlex justify="center" :size="12">
               <NButton type="primary" @click="retry" :loading="isRetrying" size="large">
-                重试
+                {{ t('databaseStatus.retry') }}
+              </NButton>
+              <NButton type="warning" @click="repairAndRetry" :loading="isRepairing" size="large">
+                {{ isRepairing ? t('databaseStatus.repairing') : t('databaseStatus.repair') }}
               </NButton>
               <NButton @click="continueWithoutDb" size="large" quaternary>
                 继续使用应用
@@ -42,16 +45,35 @@ import { ref, onMounted } from 'vue'
 import { NSpin, NText, NButton, NFlex } from 'naive-ui'
 import { useDatabase } from '~/composables/useDatabase'
 import { initDatabaseState } from '~/composables/useDatabase'
+import { useI18n } from 'vue-i18n'
+import { databaseService } from '~/lib/services'
 
 const { isDatabaseReady, databaseError, clearError } = useDatabase()
+const { t } = useI18n()
 
 const hasInitializationCompleted = ref(false)
 const isRetrying = ref(false)
+const isRepairing = ref(false)
 
 // 初始化数据库
 const initializeDatabase = async () => {
   try {
     console.log('正在初始化数据库状态...')
+
+    // 首先检查数据库健康状态并尝试修复
+    try {
+      const healthStatus = await databaseService.getHealthStatus()
+      if (!healthStatus.healthy) {
+        console.warn('检测到数据库问题，缺失表:', healthStatus.missingStores)
+        console.log('正在尝试自动修复数据库...')
+        const repairResult = await databaseService.repairDatabase()
+        console.log('数据库修复结果:', repairResult)
+      }
+    } catch (healthError) {
+      console.warn('数据库健康检查失败:', healthError)
+    }
+
+    // 初始化数据库状态
     await initDatabaseState()
     console.log('数据库状态初始化成功')
     hasInitializationCompleted.value = true
@@ -68,9 +90,53 @@ const retry = async () => {
   hasInitializationCompleted.value = false
 
   try {
+    // 先检查数据库健康状态
+    console.log('重试: 检查数据库健康状态...')
+    try {
+      const checkResult = await databaseService.checkAndRepairDatabase()
+      console.log('数据库检查和修复结果:', checkResult)
+    } catch (checkError) {
+      console.error('数据库健康检查失败:', checkError)
+    }
+
+    // 重新初始化
     await initializeDatabase()
   } finally {
     isRetrying.value = false
+  }
+}
+
+// 修复数据库并重试
+const repairAndRetry = async () => {
+  if (isRepairing.value) return
+
+  isRepairing.value = true
+  clearError()
+  hasInitializationCompleted.value = false
+
+  try {
+    console.log('开始修复数据库...')
+    // 先检查健康状态
+    const healthStatus = await databaseService.getHealthStatus()
+    if (!healthStatus.healthy) {
+      console.log('检测到数据库问题，开始修复...')
+    }
+
+    // 执行修复
+    const repairResult = await databaseService.repairDatabase()
+    console.log('修复结果:', repairResult)
+
+    if (repairResult.success) {
+      console.log('数据库修复成功，重新初始化')
+      // 重新初始化数据库
+      await initializeDatabase()
+    } else {
+      console.error('数据库修复失败:', repairResult.message)
+    }
+  } catch (error) {
+    console.error('修复过程出错:', error)
+  } finally {
+    isRepairing.value = false
   }
 }
 

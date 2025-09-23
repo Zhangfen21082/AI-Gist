@@ -4,9 +4,15 @@
             <!-- 页面标题 -->
             <NFlex justify="space-between" align="center">
                 <div>
-                    <NText strong style="font-size: 28px;">{{ t('promptManagement.title') }}</NText>
+                    <NText strong style="font-size: 28px;">
+                        {{ props.viewType === 'favorites' ? t('promptManagement.favoritesTitle') :
+                           props.viewType === 'tags' ? t('promptManagement.tagsTitle') :
+                           t('promptManagement.title') }}
+                    </NText>
                     <NText depth="3" style="display: block; margin-top: 4px;">
-                        {{ t('promptManagement.subtitle') }}
+                        {{ props.viewType === 'favorites' ? t('promptManagement.favoritesSubtitle') :
+                           props.viewType === 'tags' ? t('promptManagement.tagsSubtitle') :
+                           t('promptManagement.subtitle') }}
                     </NText>
                 </div>
                 <NFlex>
@@ -19,15 +25,22 @@
                         </template>
                         {{ t('promptManagement.aiGenerate') }}
                     </NButton>
-                    <NButton type="primary" @click="handleCreatePrompt">
+                    <NButton @click="emit('navigate-to-ai-config')">
                         <template #icon>
                             <NIcon>
-                                <Plus />
+                                <AIIcon />
                             </NIcon>
                         </template>
-                        {{ t('promptManagement.createPrompt') }}
+                        {{ t('mainPage.menu.aiConfig') }}
                     </NButton>
-
+                    <NButton @click="handleOpenSettings()">
+                        <template #icon>
+                            <NIcon>
+                                <SettingsIcon />
+                            </NIcon>
+                        </template>
+                        {{ t('mainPage.menu.settings') }}
+                    </NButton>
                 </NFlex>
             </NFlex> <!-- AI 生成器组件 -->
             <AIGeneratorComponent v-if="showAIGenerator" @prompt-generated="handlePromptGenerated"
@@ -74,7 +87,7 @@ import {
     NEmpty,
     useMessage
 } from 'naive-ui'
-import { Plus, Folder, FileText, Heart, Robot } from '@vicons/tabler'
+import { Plus, Folder, FileText, Heart, Robot, Settings as SettingsIcon, Diamonds as AIIcon } from '@vicons/tabler'
 
 // 组件导入
 import PromptList from '@/components/prompt-management/PromptList.vue'
@@ -88,10 +101,23 @@ import QuickOptimizationConfigModal from '@/components/ai/QuickOptimizationConfi
 import { api } from '@/lib/api'
 import { useDatabase } from '@/composables/useDatabase'
 
+// 定义属性
+const props = defineProps<{
+    viewType?: 'folders' | 'favorites' | 'tags',
+    selectedFolder?: string | null,
+    selectedTag?: string,
+    showFavoritesOnly?: boolean
+}>()
+
 // 定义事件
 const emit = defineEmits<{
-    'navigate-to-ai-config': []
+    'navigate-to-ai-config': [],
+    'open-settings': [string?]
 }>()
+
+const handleOpenSettings = (targetSection?: string) => {
+    emit('open-settings', targetSection)
+}
 
 const { t } = useI18n()
 const message = useMessage()
@@ -124,6 +150,43 @@ const loadPrompts = async () => {
     )
     if (result) {
         prompts.value = result
+    }
+}
+
+// 基于当前视图类型和筛选属性设置视图模式
+const applyViewTypeSettings = () => {
+    if (props.viewType) {
+        // 设置提示词列表组件的视图模式
+        switch (props.viewType) {
+            case 'folders':
+                // 默认文件夹视图
+                if (props.selectedFolder !== undefined && promptListRef.value) {
+                    // 应用文件夹筛选
+                    if (promptListRef.value.filterByCategory) {
+                        promptListRef.value.filterByCategory(props.selectedFolder)
+                    }
+                }
+                break
+            case 'favorites':
+                // 设置仅显示收藏项
+                if (promptListRef.value?.toggleFavoritesFilter) {
+                    const showFavorites = props.showFavoritesOnly !== undefined
+                        ? props.showFavoritesOnly
+                        : true
+                    promptListRef.value.toggleFavoritesFilter(showFavorites)
+                }
+                break
+            case 'tags':
+                // 打开标签筛选器
+                if (promptListRef.value?.toggleAdvancedFilter) {
+                    promptListRef.value.toggleAdvancedFilter(true)
+                }
+                // 应用标签筛选
+                if (props.selectedTag && promptListRef.value?.handleTagQuickSearch) {
+                    promptListRef.value.handleTagQuickSearch(props.selectedTag)
+                }
+                break
+        }
     }
 }
 
@@ -285,6 +348,34 @@ onMounted(async () => {
     // 等待数据库就绪后再加载数据
     await waitForDatabase()
     loadStatistics()
+    // 应用视图类型设置
+    applyViewTypeSettings()
+})
+
+// 监听 viewType 的变化
+watch(() => props.viewType, () => {
+    applyViewTypeSettings()
+})
+
+// 监听 selectedFolder 的变化
+watch(() => props.selectedFolder, () => {
+    if (props.viewType === 'folders' && promptListRef.value?.filterByCategory) {
+        promptListRef.value.filterByCategory(props.selectedFolder)
+    }
+})
+
+// 监听 selectedTag 的变化
+watch(() => props.selectedTag, () => {
+    if (props.viewType === 'tags' && promptListRef.value?.handleTagQuickSearch) {
+        promptListRef.value.handleTagQuickSearch(props.selectedTag)
+    }
+})
+
+// 监听 showFavoritesOnly 的变化
+watch(() => props.showFavoritesOnly, () => {
+    if (props.viewType === 'favorites' && promptListRef.value?.toggleFavoritesFilter) {
+        promptListRef.value.toggleFavoritesFilter(props.showFavoritesOnly)
+    }
 })
 
 // 监听selectedPrompt的变化

@@ -11,7 +11,10 @@
         </div>
       </div>
       <div class="actions">
-        <button @click="retry" class="retry-btn" :disabled="isRetrying">
+        <button @click="repairAndRetry" class="repair-btn" :disabled="isRepairing">
+          {{ isRepairing ? t('databaseStatus.repairing') : t('databaseStatus.repair') }}
+        </button>
+        <button @click="retry" class="retry-btn" :disabled="isRetrying || isRepairing">
           {{ isRetrying ? t('databaseStatus.retrying') : t('databaseStatus.retry') }}
         </button>
         <button @click="hide" class="close-btn">
@@ -26,30 +29,77 @@
 import { ref } from 'vue'
 import { useDatabase } from '~/composables/useDatabase'
 import { useI18n } from 'vue-i18n'
+import { databaseService } from '~/lib/services'
 
 const { isDatabaseReady, databaseError, waitForDatabase, clearError } = useDatabase()
 const { t } = useI18n()
 
 const isHidden = ref(false)
 const isRetrying = ref(false)
+const isRepairing = ref(false)
+const retryAttempts = ref(0)
+const maxRetries = 3
 
 const hide = () => {
   isHidden.value = true
 }
 
 const retry = async () => {
+  if (isRetrying.value || isRepairing.value) return
+
   isRetrying.value = true
   clearError()
+  retryAttempts.value++
 
   try {
+    console.log(`重试数据库连接 (${retryAttempts.value}/${maxRetries})...`)
     await waitForDatabase()
     if (isDatabaseReady.value) {
       isHidden.value = true
+      console.log('数据库连接恢复成功')
     }
   } catch (error) {
     console.error('重试失败:', error)
+    if (retryAttempts.value >= maxRetries) {
+      console.warn('达到最大重试次数，建议尝试修复数据库')
+    }
   } finally {
     isRetrying.value = false
+  }
+}
+
+const repairAndRetry = async () => {
+  if (isRepairing.value) return
+
+  isRepairing.value = true
+  clearError()
+
+  try {
+    console.log('开始修复数据库...')
+    // 先检查健康状态
+    const healthStatus = await databaseService.getHealthStatus()
+    if (!healthStatus.healthy) {
+      console.log('检测到数据库问题，开始修复...')
+    }
+
+    // 执行修复
+    const repairResult = await databaseService.repairDatabase()
+    console.log('修复结果:', repairResult)
+
+    if (repairResult.success) {
+      console.log('数据库修复成功，重新尝试连接')
+      await waitForDatabase()
+      if (isDatabaseReady.value) {
+        isHidden.value = true
+        console.log('数据库修复并连接成功')
+      }
+    } else {
+      console.error('数据库修复失败:', repairResult.message)
+    }
+  } catch (error) {
+    console.error('修复过程出错:', error)
+  } finally {
+    isRepairing.value = false
   }
 }
 </script>
