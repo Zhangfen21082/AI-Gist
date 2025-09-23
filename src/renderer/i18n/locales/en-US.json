@@ -759,6 +759,32 @@
     "subtitle": "Manage application configuration and preferences",
     "title": "Settings"
   },
+  "sidebar": {
+    "folders": "Folders",
+    "favorites": "Favorites",
+    "tags": "Tags",
+    "allFiles": "All Files",
+    "noFolders": "No folders yet",
+    "noFavorites": "No favorites yet",
+    "noTags": "No tags yet",
+    "showFavoritesOnly": "Show favorites only",
+    "showAll": "Show all",
+    "createFolder": "New Folder",
+    "manageFolder": "Manage Folder",
+    "createPrompt": "New Prompt",
+    "folderTooltip": "Click to view prompts in this folder",
+    "folderNameCannotBeEmpty": "Folder name cannot be empty",
+    "folderNameExists": "A folder with the same name already exists, please use another name",
+    "folderRenameSuccess": "Folder renamed successfully",
+    "folderRenameFailed": "Failed to rename folder",
+    "confirmDeleteFolder": "Are you sure you want to delete this folder? Prompts in the folder will not be deleted.",
+    "confirmDeleteNonEmptyFolder": "This folder contains prompts. Are you sure you want to delete it? All prompts in the folder will be preserved.",
+    "folderDeleteSuccess": "Folder deleted successfully",
+    "folderDeleteFailed": "Failed to delete folder",
+    "cannotEditSpecialFolder": "Cannot edit special folder",
+    "cannotDeleteSpecialFolder": "Cannot delete special folder"
+  },
+
   "settingsMessages": {
     "autoBackupBeforeRestore": "Automatic backup before recovery - {timestamp}",
     "autoBackupCreated": "Automatic backup creation successfully: {name}",

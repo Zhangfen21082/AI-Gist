@@ -491,6 +491,7 @@ import {
 import { Plus, Trash, Eye, ArrowBackUp, History, Settings, Code, Photo } from "@vicons/tabler";
 import { api } from "@/lib/api";
 import { useWindowSize } from "@/composables/useWindowSize";
+import { useDatabase } from "@/composables/useDatabase";
 import CommonModal from "@/components/common/CommonModal.vue";
 import AIModelSelector from "@/components/common/AIModelSelector.vue";
 import RegularPromptEditor from "@/components/prompt-management/RegularPromptEditor.vue";
@@ -527,9 +528,12 @@ const emit = defineEmits<Emits>();
 
 const { t } = useI18n()
 const message = useMessage();
+const { safeDbOperation } = useDatabase();
 const formRef = ref();
 const contentScrollbarRef = ref(); // 内容区域滚动条引用
 const saving = ref(false);
+// 定义本地分类数据，用于实时保存最新的分类数据
+const localCategories = ref<any[]>([]);
 const activeTab = ref("edit");
 const historyList = ref<PromptHistory[]>([]);
 const loadingHistory = ref(false);
@@ -605,9 +609,10 @@ const formData = ref<{
 // 计算属性
 const isEdit = computed(() => !!props.prompt?.id);
 
+// 使用本地分类数据，如果本地数据为空则使用props中的数据做为后备
 const categoryOptions = computed(() => [
     { label: t('promptManagement.noCategory'), value: null },
-    ...props.categories.map((cat) => ({
+    ...(localCategories.value.length > 0 ? localCategories.value : props.categories).map((cat) => ({
         label: cat.name,
         value: cat.id,
     })),
@@ -1533,11 +1538,28 @@ watch(
 // 监听弹窗显示状态
 watch(
     () => props.show,
-    (newShow, oldShow) => {
+    async (newShow, oldShow) => {
         if (newShow) {
             // 加载快速优化配置
             loadQuickOptimizationConfigs();
-            
+
+            // 重新获取最新分类数据，确保分类选择器中显示的是最新数据
+            try {
+                const latestCategories = await safeDbOperation(
+                    () => api.categories.getAll.query(),
+                    props.categories
+                );
+
+                if (latestCategories && Array.isArray(latestCategories)) {
+                    // 使用变量保存最新获取的分类数据
+                    localCategories.value = latestCategories;
+                }
+            } catch (error) {
+                console.error('获取最新分类数据失败:', error);
+                // 如果获取失败，使用props中的分类数据作为后备
+                localCategories.value = props.categories || [];
+            }
+
             if (!oldShow) {
                 // 弹窗从隐藏变为显示时
                 activeTab.value = "edit";
@@ -2093,6 +2115,14 @@ const updateVariables = (newVariables: any[]) => {
         placeholder: v.placeholder,
     })) as Variable[];
 };
+
+// 监听 props.categories 的变化
+watch(() => props.categories, (newCategories) => {
+  if (newCategories && Array.isArray(newCategories)) {
+    // 更新本地分类数据
+    localCategories.value = newCategories;
+  }
+}, { immediate: true });
 
 // 暴露方法给父组件
 defineExpose({

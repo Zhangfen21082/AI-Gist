@@ -62,7 +62,7 @@
             <span class="folder-count">{{ getPromptCountForFolder(element.id) }}</span>
 
             <!-- 操作按钮组 -->
-            <div class="folder-actions" v-if="selectedFolder === element.id && !editingFolderId">
+            <div class="folder-actions" v-if="!editingFolderId">
               <NButton quaternary circle size="tiny" @click.stop="startEditingFolder(element)">
                 <template #icon><NIcon><EditIcon /></NIcon></template>
               </NButton>
@@ -242,13 +242,22 @@ const cancelEditingFolder = () => {
 
 // 删除文件夹
 const deleteFolder = async (folderId: string) => {
-  if (!confirm(t('sidebar.confirmDeleteFolder'))) return
-
   // 检查是否为特殊ID（如"uncategorized"）
   if (isNaN(parseInt(folderId))) {
     console.warn('尝试删除特殊文件夹:', folderId)
     message.warning(t('sidebar.cannotDeleteSpecialFolder'))
     return
+  }
+
+  // 获取该文件夹中的提示词数量
+  const promptCount = getPromptCountForFolder(folderId)
+
+  // 如果文件夹非空，显示特殊确认对话框
+  if (promptCount > 0) {
+    if (!confirm(t('sidebar.confirmDeleteNonEmptyFolder'))) return
+  } else {
+    // 空文件夹直接删除，无需确认
+    // 如果用户仍然希望空文件夹也需确认，可以取消这个else分支，保留下方的confirm
   }
 
   try {
@@ -425,7 +434,9 @@ defineExpose({
 
 /* 文件夹操作按钮 */
 .folder-actions {
-  display: none;
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
   position: absolute;
   right: 8px;
   top: 50%;
@@ -435,9 +446,12 @@ defineExpose({
   padding: 2px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 5;
+  transition: opacity 0.2s ease;
 }
 
 .folder-item:hover .folder-actions {
   display: flex;
+  opacity: 1;
+  pointer-events: auto;
 }
 </style>

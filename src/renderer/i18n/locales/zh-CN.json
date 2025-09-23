@@ -325,6 +325,7 @@
     "folderRenameSuccess": "文件夹重命名成功",
     "folderRenameFailed": "文件夹重命名失败",
     "confirmDeleteFolder": "确定要删除此文件夹吗？文件夹中的提示词不会被删除。",
+    "confirmDeleteNonEmptyFolder": "此文件夹中包含提示词，确定要删除吗？文件夹中的所有提示词将保留。",
     "folderDeleteSuccess": "文件夹删除成功",
     "folderDeleteFailed": "文件夹删除失败",
     "cannotEditSpecialFolder": "无法编辑特殊文件夹",
